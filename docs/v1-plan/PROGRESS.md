@@ -53,7 +53,7 @@ Verify: deno lint
 | ✅     | T06 | T04     | `hideCursor` opt-in: hide at start, restore in `stop()` and via `io.onExit`; no signal listeners; JSDoc the host contract                            | [02](./02-io-and-lifecycle.md) #4              | —      |
 | ✅     | T07 | T05 T06 | Public surface: `mod.ts` exports, JSDoc on every export/option, drop unused `@std/fs`/`@std/path`, `deno publish --dry-run` clean, `scripts/demo.ts` | [03](./03-verification-port-and-release.md) #2 | —      |
 | ✅     | T08 | T07     | Port `sprint/src/activity.ts` to a thin adapter (path-mapped import); acceptance per proposal §9; API corrections flow back into `src/`              | [03](./03-verification-port-and-release.md) #3 | —      |
-| ⬜     | T09 | T08     | `README.md` per the human docs guide, `AGENTS.md` per the agent docs guide; no private-package or sprint path mentions                               | [03](./03-verification-port-and-release.md) #4 | —      |
+| ✅     | T09 | T08     | `README.md` per the human docs guide, `AGENTS.md` per the agent docs guide; no private-package or sprint path mentions                               | [03](./03-verification-port-and-release.md) #4 | —      |
 | 🔒     | T10 | T09     | Pre-release checklist, `deno task rp` → 0.1.0 on JSR                                                                                                 | [03](./03-verification-port-and-release.md) #5 | —      |
 | 🔒     | T11 | T10     | Flip `sprint/deno.json` import from the local path to `jsr:@marianmeres/cli-status-line@^0.1`; re-run sprint e2e                                     | [03](./03-verification-port-and-release.md) #5 | —      |
 
