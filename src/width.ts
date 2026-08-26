@@ -1,3 +1,8 @@
+// deno-lint-ignore-file no-control-regex
+// The regexes below match ANSI escape sequences and C0/C1 control characters
+// by their literal byte values; the control characters in the patterns are the
+// point, not an oversight.
+
 /**
  * Display-width helpers used by the renderer to compose one line that never
  * wraps. All three functions are pure and safe to call with any user string;

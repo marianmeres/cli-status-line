@@ -32,8 +32,14 @@ import { type Io, resolveIo } from "./io.ts";
 import { layout, paint } from "./layout.ts";
 import { sanitize } from "./width.ts";
 
-/** Default spinner frames — braille dot rotation, one frame per tick. */
-export const DEFAULT_FRAMES: readonly string[] = [
+/**
+ * Default spinner frames — a braille dot rotation, one frame per tick. Renders
+ * as a smooth spinner on any terminal with a font that carries the U+28xx
+ * block (all mainstream terminals since ~2015). Pass a different array to
+ * `frames` for a different look; see {@link ASCII_FRAMES} for a fallback on
+ * terminals without braille glyphs.
+ */
+export const BRAILLE_FRAMES: readonly string[] = [
 	"⠋",
 	"⠙",
 	"⠹",
@@ -46,7 +52,11 @@ export const DEFAULT_FRAMES: readonly string[] = [
 	"⠏",
 ];
 
-/** Fallback spinner frames for terminals without braille support. */
+/**
+ * Fallback spinner frames for terminals whose font lacks braille glyphs.
+ * Renders the classic four-phase ASCII spinner (`- \ | /`). Pass to `frames`
+ * when the default {@link BRAILLE_FRAMES} would show tofu.
+ */
 export const ASCII_FRAMES: readonly string[] = ["-", "\\", "|", "/"];
 
 /**
@@ -69,7 +79,7 @@ export interface CounterDecl {
 export interface StatusLineOptions {
 	/** Redraw interval in milliseconds. Default 100. */
 	intervalMs?: number;
-	/** Spinner frames, cycled one per tick. Default `DEFAULT_FRAMES`. */
+	/** Spinner frames, cycled one per tick. Default {@link BRAILLE_FRAMES}. */
 	frames?: readonly string[];
 	/** Whether to show the elapsed `"m:ss"` clock. Default `true`. */
 	clock?: boolean;
@@ -88,6 +98,22 @@ export interface StatusLineOptions {
 	 * nothing, or a function for a custom format. See {@link FallbackPolicy}.
 	 */
 	fallback?: FallbackPolicy;
+	/**
+	 * Hide the terminal cursor while the line is animated. Emits `\x1b[?25l`
+	 * at construction and restores with `\x1b[?25h` in `stop()`; also
+	 * registers `io.onExit(restore)` so a normal `unload` (including
+	 * `Deno.exit()`) puts the cursor back. Ignored on the non-animated path.
+	 * Default `false`.
+	 *
+	 * **Host contract — signals are the host's job.** This library never
+	 * calls `Deno.addSignalListener`: a `SIGINT` listener disables Deno's
+	 * default terminate-on-Ctrl-C behaviour, which would silently keep the
+	 * host alive. That means a signal-killed process bypasses `unload`, so
+	 * `onExit` does not fire and the cursor stays hidden. If the host wants
+	 * cursor restore on Ctrl-C, it must own the signal handler (typically by
+	 * calling `stop()` from its own handler before exiting).
+	 */
+	hideCursor?: boolean;
 	/** Inject a partial `Io` for tests; the rest defers to `denoIo`. */
 	io?: Partial<Io>;
 }
@@ -162,7 +188,7 @@ function formatClock(elapsedMs: number): string {
 export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	const io = resolveIo(options.io);
 	const intervalMs = options.intervalMs ?? 100;
-	const frames = options.frames ?? DEFAULT_FRAMES;
+	const frames = options.frames ?? BRAILLE_FRAMES;
 	const showClock = options.clock !== false;
 	const counterDecls = options.counters ?? [];
 	const counterState = new Map<string, number>();
@@ -171,6 +197,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	const animated = isAnimated(io, options.enabled);
 	const runFallback = resolveFallback(options.fallback);
 	let lastFallbackLine: string | null = null;
+	const hideCursor = options.hideCursor === true;
 
 	const startedAt = io.now();
 	let stoppedAt: number | null = null;
@@ -181,6 +208,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	let paused = false;
 	let drawn = false;
 	let timer: number | undefined;
+	let unsubscribeOnExit: (() => void) | undefined;
 
 	function elapsed(): number {
 		return (stoppedAt ?? io.now()) - startedAt;
@@ -234,6 +262,20 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	}
 
 	if (animated) {
+		if (hideCursor) {
+			try {
+				io.write("\x1b[?25l");
+			} catch {
+				// never-throw
+			}
+			unsubscribeOnExit = io.onExit(() => {
+				try {
+					io.write("\x1b[?25h");
+				} catch {
+					// never-throw
+				}
+			});
+		}
 		draw();
 		// Some environments type `setInterval` as returning a `Timeout` object
 		// (Node compat shim); Deno's own runtime hands back a number and
@@ -338,6 +380,13 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 				}
 				if (text !== undefined) {
 					io.write(text + "\n");
+				}
+				if (hideCursor && animated) {
+					io.write("\x1b[?25h");
+				}
+				if (unsubscribeOnExit) {
+					unsubscribeOnExit();
+					unsubscribeOnExit = undefined;
 				}
 			} catch {
 				// never-throw
