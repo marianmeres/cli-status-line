@@ -27,7 +27,7 @@ A fresh conversation should read this file first, then the relevant `NN-*.md` se
 ## First sprint (core: seam, width, layout, runtime, fallback)
 
 Branch: `v1-core`
-Options: --max-tasks 5 --budget 40
+Options: --max-tasks 5 --budget 40 --model claude-opus-5
 Verify: deno task test
 Verify: deno fmt --check
 
