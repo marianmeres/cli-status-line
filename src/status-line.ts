@@ -32,8 +32,14 @@ import { type Io, resolveIo } from "./io.ts";
 import { layout, paint } from "./layout.ts";
 import { sanitize } from "./width.ts";
 
-/** Default spinner frames — braille dot rotation, one frame per tick. */
-export const DEFAULT_FRAMES: readonly string[] = [
+/**
+ * Default spinner frames — a braille dot rotation, one frame per tick. Renders
+ * as a smooth spinner on any terminal with a font that carries the U+28xx
+ * block (all mainstream terminals since ~2015). Pass a different array to
+ * `frames` for a different look; see {@link ASCII_FRAMES} for a fallback on
+ * terminals without braille glyphs.
+ */
+export const BRAILLE_FRAMES: readonly string[] = [
 	"⠋",
 	"⠙",
 	"⠹",
@@ -46,7 +52,11 @@ export const DEFAULT_FRAMES: readonly string[] = [
 	"⠏",
 ];
 
-/** Fallback spinner frames for terminals without braille support. */
+/**
+ * Fallback spinner frames for terminals whose font lacks braille glyphs.
+ * Renders the classic four-phase ASCII spinner (`- \ | /`). Pass to `frames`
+ * when the default {@link BRAILLE_FRAMES} would show tofu.
+ */
 export const ASCII_FRAMES: readonly string[] = ["-", "\\", "|", "/"];
 
 /**
@@ -69,7 +79,7 @@ export interface CounterDecl {
 export interface StatusLineOptions {
 	/** Redraw interval in milliseconds. Default 100. */
 	intervalMs?: number;
-	/** Spinner frames, cycled one per tick. Default `DEFAULT_FRAMES`. */
+	/** Spinner frames, cycled one per tick. Default {@link BRAILLE_FRAMES}. */
 	frames?: readonly string[];
 	/** Whether to show the elapsed `"m:ss"` clock. Default `true`. */
 	clock?: boolean;
@@ -178,7 +188,7 @@ function formatClock(elapsedMs: number): string {
 export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	const io = resolveIo(options.io);
 	const intervalMs = options.intervalMs ?? 100;
-	const frames = options.frames ?? DEFAULT_FRAMES;
+	const frames = options.frames ?? BRAILLE_FRAMES;
 	const showClock = options.clock !== false;
 	const counterDecls = options.counters ?? [];
 	const counterState = new Map<string, number>();
