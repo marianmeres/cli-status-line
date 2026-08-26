@@ -6,7 +6,7 @@
 		"test": "deno test",
 		"test:watch": "deno test --watch",
 		"lint": "deno lint",
-		"check": "deno check src/ tests/ scripts/",
+		"check": "deno check src/ tests/ scripts/ examples/",
 		"release": "deno run -A jsr:@marianmeres/release",
 		"publish": "deno publish",
 		"rp": "deno task release -y && deno task publish",

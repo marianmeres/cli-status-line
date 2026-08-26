@@ -3,11 +3,15 @@
  * Manual eyeball check for `statusLine()`. Runs a fake workload for ~6 s with
  * a mid-run `log()`, a `pause()` / `resume()`, and a final `stop({ text })`.
  *
- * Run it three ways to see all three code paths:
+ * Run it two ways to see both code paths:
  *
  *     deno run scripts/demo.ts           # animated on a tty
  *     deno run scripts/demo.ts | cat     # non-tty → notable lines only
- *     COLUMNS=40 deno run scripts/demo.ts  # narrow → degradation ladder
+ *
+ * Width comes from `Deno.consoleSize()`, so `COLUMNS=40` does nothing here —
+ * resize the window to watch the degradation ladder, or run
+ * `examples/05-narrow-terminal.ts`, which renders at chosen widths by injecting
+ * `columns()` through the `io` seam.
  */
 
 import { statusLine } from "../src/mod.ts";

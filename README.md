@@ -50,6 +50,31 @@ line.stop({ text: "done" });
 
 Every method is idempotent and never throws. Post-`stop()` calls are no-ops.
 
+## Examples
+
+[`examples/`](./examples/) has one runnable script per topic — clone the repo and
+run any of them directly, no arguments or setup:
+
+```bash
+deno run examples/01-basic.ts
+deno run examples/02-counters-and-log.ts | cat   # same code, non-animated path
+```
+
+| Script                                                                      | Shows                                                  |
+| --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| [`01-basic.ts`](./examples/01-basic.ts)                                     | The minimal spinner + clock + label                    |
+| [`02-counters-and-log.ts`](./examples/02-counters-and-log.ts)               | Declared counters, `inc()`, and `log()` above the line |
+| [`03-non-tty-fallback.ts`](./examples/03-non-tty-fallback.ts)               | What lands in a log file under a pipe or in CI         |
+| [`04-custom-fallback.ts`](./examples/04-custom-fallback.ts)                 | Owning that format with a `FallbackPolicy` function    |
+| [`05-narrow-terminal.ts`](./examples/05-narrow-terminal.ts)                 | The degradation ladder, rendered at ten widths at once |
+| [`06-pause-for-prompt.ts`](./examples/06-pause-for-prompt.ts)               | `pause()` / `resume()` around a blocking `confirm()`   |
+| [`07-hide-cursor-and-signals.ts`](./examples/07-hide-cursor-and-signals.ts) | `hideCursor` and the host-owned `SIGINT` handler       |
+
+Note that `COLUMNS=40` does **not** narrow the line: width comes from
+`Deno.consoleSize()`, re-read on every tick. Resize the window, or see
+[`05-narrow-terminal.ts`](./examples/05-narrow-terminal.ts), which injects
+`columns()` through the `io` seam.
+
 ## API
 
 ### `statusLine(options?): StatusLine`

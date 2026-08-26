@@ -45,7 +45,8 @@ tests/
 ├── fallback.test.ts
 └── cursor.test.ts
 scripts/
-└── demo.ts         # Manual eyeball check (run animated / | cat / COLUMNS=40)
+└── demo.ts         # Manual eyeball check (run animated, and again | cat)
+examples/           # Runnable one-per-topic examples + their own README
 docs/v1-plan/       # Multistep plan tracker + source docs
 deno.json           # Deno config, version, tasks, imports
 ```
@@ -239,13 +240,25 @@ Suite → source file map is 1:1 (`width`, `layout`, `io`, `status-line`,
 | Release + publish | `deno task rp` (patch) / `deno task rpm` (minor) |
 | Manual demo       | `deno run scripts/demo.ts`                       |
 
-Run the demo three ways to eyeball all three paths:
+Run the demo both ways to eyeball both paths:
 
 ```bash
 deno run scripts/demo.ts              # animated on a tty
 deno run scripts/demo.ts | cat        # non-tty → notable lines only
-COLUMNS=40 deno run scripts/demo.ts   # narrow → degradation ladder
 ```
+
+**`COLUMNS` is not read.** Width comes from `Deno.consoleSize()`, re-read every
+tick (which is how resize works without a `SIGWINCH` listener). To render at a
+chosen width, inject `columns()` through the `io` seam — `examples/05-narrow-terminal.ts`
+does exactly that and prints the whole degradation ladder in one go.
+
+`examples/` holds one runnable script per topic (basic, counters + `log()`,
+non-tty fallback, custom fallback policy, narrow widths, `pause()` around a
+prompt, `hideCursor` + the signal contract); see `examples/README.md`. They
+import the package by name via the `@marianmeres/cli-status-line` → `./src/mod.ts`
+self-mapping in `deno.json`, so their import lines match what a consumer writes.
+`deno task check` type-checks them, and none of them ship in the published
+tarball (`publish.exclude`).
 
 ## Dependencies
 
