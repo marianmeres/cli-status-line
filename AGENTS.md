@@ -19,7 +19,8 @@ spamming the transcript. Extracted from an internal driver.
 
 ## Quick Reference
 
-- **Runtime**: Deno (single adapter; Node deferred to backlog T13)
+- **Runtime**: Deno (single adapter; a Node adapter is deferred — see the
+  backlog in [docs/_archive/v1-plan/PROGRESS.md](docs/_archive/v1-plan/PROGRESS.md))
 - **Test**: `deno task test`
 - **Lint**: `deno task lint`
 - **Format check**: `deno fmt --check`
@@ -47,9 +48,24 @@ tests/
 scripts/
 └── demo.ts         # Manual eyeball check (run animated, and again | cat)
 examples/           # Runnable one-per-topic examples + their own README
-docs/v1-plan/       # Multistep plan tracker + source docs
+docs/_archive/v1-plan/   # Closed v1 plan: tracker, decisions D1–D13, backlog
 deno.json           # Deno config, version, tasks, imports
 ```
+
+## Documentation Index
+
+| Doc                                              | Audience | Contents                                                      |
+| ------------------------------------------------ | -------- | ------------------------------------------------------------- |
+| [README.md](README.md)                           | Human    | Overview, install, usage, examples, scope                     |
+| [API.md](API.md)                                 | Human    | Full reference: options, methods, policies, `Io`, degradation |
+| [AGENTS.md](AGENTS.md)                           | Agent    | This file — invariants, conventions, commands                 |
+| [CLAUDE.md](CLAUDE.md)                           | Agent    | Pointer only — redirects to this file                         |
+| [examples/README.md](examples/README.md)         | Human    | One runnable script per topic                                 |
+| [docs/_archive/v1-plan/](docs/_archive/v1-plan/) | Both     | Closed plan, decision log (D1–D13), deferred backlog          |
+
+**Full signatures live in [API.md](API.md), not here.** Read it before changing
+any public type, and update it in the same commit — it is hand-written, so
+nothing else will catch the drift.
 
 ## Public API
 
@@ -72,68 +88,30 @@ Exports from `src/mod.ts`:
 Nothing from `width.ts` / `layout.ts` / `fallback.ts` (bar the type re-exports)
 is on the public surface — those are internal seams.
 
-## Function Signatures
+## Signatures at a glance
 
 ```typescript
 function statusLine(options?: StatusLineOptions): StatusLine;
 
 interface StatusLine {
-	set(label: string, detail?: string, opts?: StatusLineSetOptions): void;
+	set(label: string, detail?: string, opts?: { notable?: boolean }): void;
 	inc(key: string, by?: number): void;
 	log(...args: unknown[]): void;
 	pause(): void;
 	resume(): void;
-	stop(opts?: StatusLineStopOptions): void;
+	stop(opts?: { clear?: boolean; text?: string }): void;
 	readonly elapsedMs: number;
 }
 
-interface StatusLineOptions {
-	intervalMs?: number; // default 100
-	frames?: readonly string[]; // default BRAILLE_FRAMES
-	clock?: boolean; // default true
-	counters?: readonly CounterDecl[]; // default []
-	enabled?: boolean; // default: auto (isTerminal && TERM!=dumb && !CI)
-	fallback?: FallbackPolicy; // default "notable"
-	hideCursor?: boolean; // default false
-	io?: Partial<Io>; // test seam; merged over denoIo
-}
-
-interface CounterDecl {
-	key: string;
-	glyph: string;
-}
-interface StatusLineSetOptions {
-	notable?: boolean;
-}
-interface StatusLineStopOptions {
-	clear?: boolean;
-	text?: string;
-}
-
-type FallbackPolicy =
-	| "silent"
-	| "notable"
-	| ((snap: StatusSnapshot) => string | null);
-
-interface StatusSnapshot {
-	elapsedMs: number;
-	clock: string; // "m:ss" when enabled, "" otherwise
-	label: string;
-	detail: string;
-	counters: Readonly<Record<string, number>>;
-	notable: boolean;
-}
-
-interface Io {
-	write(s: string): void; // never throws; short writes drained
-	columns(): number; // defaults to 80 when unknown
-	isTerminal(): boolean;
-	env(key: string): string | undefined; // never throws (permission-denied → undefined)
-	unrefTimer(id: number): void;
-	now(): number;
-	onExit(fn: () => void): () => void; // returns unsubscribe
-}
+// Defaults: intervalMs 100 · frames BRAILLE_FRAMES · clock true · counters []
+//           enabled auto (isTerminal && TERM!=dumb && !CI) · fallback "notable"
+//           hideCursor false · io merged over denoIo
 ```
+
+Field-by-field types, `StatusSnapshot`, `FallbackPolicy` and the `Io` seam are in
+[API.md](API.md); the authoritative source is the JSDoc in
+[src/status-line.ts](src/status-line.ts), [src/fallback.ts](src/fallback.ts) and
+[src/io.ts](src/io.ts).
 
 ## Critical Conventions
 
@@ -162,17 +140,19 @@ interface Io {
 8. **Post-`stop()` calls are no-ops.** First `stop()` wins; `elapsedMs`
    freezes at that moment.
 9. **`hideCursor` restores via `stop()` and `io.onExit`; no signal handling.**
-   Host owns signals — see the cursor contract in README.
+   Host owns signals — see [Cursor contract](API.md#cursor-contract).
 
 ## Layout invariants
 
 - Fixed order: `spinner clock · counters label detail`.
 - Budget is `columns - 1` (last column left blank because many terminals
   auto-wrap when the final column is written).
-- Degradation ladder: truncate `detail` (keep `MIN_TAIL = 8` cols for label +
-  detail when the head allows) → drop `detail`, truncate `label` → drop
-  `counters` and retry → drop `clock` and retry → spinner only → all-empty
-  (caller writes just `\r\x1b[K`).
+- Degradation is **two nested passes**, not a flat ladder. Outer: tiers
+  `[clock, counters]` → `[clock]` → `[]`, abandoning a tier as soon as it
+  leaves the tail under `MIN_TAIL = 8` cols — so **counters drop before
+  `detail` does**. Inner (`fitTail`): truncate `detail` → drop `detail`,
+  truncate `label`. Then spinner only → all-empty (caller writes just
+  `\r\x1b[K`). Worked example in [API.md](API.md#width-budget-and-degradation).
 - `layout()` is pure: no I/O, no globals, `columns` is an argument so the
   runtime re-reads it per frame (that is how a resize is handled without a
   `SIGWINCH` listener).
@@ -226,6 +206,8 @@ Suite → source file map is 1:1 (`width`, `layout`, `io`, `status-line`,
 - [ ] Run: `deno task test` → `deno fmt --check` → `deno lint`.
 - [ ] `deno publish --dry-run` stays clean if you touched `mod.ts` /
       `deno.json`.
+- [ ] Public surface changed? Update [API.md](API.md) and the export table
+      above in the same commit — both are hand-written.
 
 ## Commands
 
@@ -280,25 +262,28 @@ No runtime `@marianmeres/*` dependencies. Uses `Deno.stdout`,
 2. **Pure core, thin runtime** — `layout()` and `width.ts` are
    side-effect-free; `status-line.ts` is the only stateful file.
 3. **Platform via one seam** — `Io` isolates `Deno.*` so tests are
-   byte-exact and a Node adapter is a single file (deferred to T13).
+   byte-exact and a Node adapter is a single file (deferred; backlog T13).
 4. **Never throw, never keep-alive** — the two invariants that shape every
    line of `status-line.ts`.
 5. **Fixed layout order in v1** — a segment/priority system is deferred
-   until a caller needs a different order (T14).
+   until a caller needs a different order (deferred; backlog T14).
 
 ## File Locations
 
-| Concern              | File                                                 |
-| -------------------- | ---------------------------------------------------- |
-| Public surface       | [src/mod.ts](src/mod.ts)                             |
-| Runtime              | [src/status-line.ts](src/status-line.ts)             |
-| Layout & paint       | [src/layout.ts](src/layout.ts)                       |
-| Fallback + detection | [src/fallback.ts](src/fallback.ts)                   |
-| Width / sanitize     | [src/width.ts](src/width.ts)                         |
-| Platform seam        | [src/io.ts](src/io.ts)                               |
-| Test fake `Io`       | [tests/_fake-io.ts](tests/_fake-io.ts)               |
-| Manual demo          | [scripts/demo.ts](scripts/demo.ts)                   |
-| Package config       | [deno.json](deno.json)                               |
-| Human documentation  | [README.md](README.md)                               |
-| Agent documentation  | [AGENTS.md](AGENTS.md)                               |
-| v1 plan tracker      | [docs/v1-plan/PROGRESS.md](docs/v1-plan/PROGRESS.md) |
+| Concern              | File                                                                   |
+| -------------------- | ---------------------------------------------------------------------- |
+| Public surface       | [src/mod.ts](src/mod.ts)                                               |
+| Runtime              | [src/status-line.ts](src/status-line.ts)                               |
+| Layout & paint       | [src/layout.ts](src/layout.ts)                                         |
+| Fallback + detection | [src/fallback.ts](src/fallback.ts)                                     |
+| Width / sanitize     | [src/width.ts](src/width.ts)                                           |
+| Platform seam        | [src/io.ts](src/io.ts)                                                 |
+| Test fake `Io`       | [tests/_fake-io.ts](tests/_fake-io.ts)                                 |
+| Manual demo          | [scripts/demo.ts](scripts/demo.ts)                                     |
+| Package config       | [deno.json](deno.json)                                                 |
+| Human overview       | [README.md](README.md)                                                 |
+| Human API reference  | [API.md](API.md)                                                       |
+| Agent documentation  | [AGENTS.md](AGENTS.md)                                                 |
+| Agent doc pointer    | [CLAUDE.md](CLAUDE.md)                                                 |
+| Examples index       | [examples/README.md](examples/README.md)                               |
+| Closed v1 plan       | [docs/_archive/v1-plan/PROGRESS.md](docs/_archive/v1-plan/PROGRESS.md) |

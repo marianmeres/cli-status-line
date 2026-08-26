@@ -9,13 +9,13 @@
  *
  * ## Shape (animated path)
  *
- *     ⠹ 0:04 · 3⚒ · running · scripts/build.ts
- *     ^ ^         ^         ^        ^
- *     | |         |         |        detail  (dim)
- *     | |         |         label            (yellow)
- *     | |         counters                   (dim, joined by " ")
- *     | clock                                (dim, m:ss)
- *     spinner                                (cyan, one frame per tick)
+ *     ⠹ 0:04 · 3⚒ running scripts/build.ts
+ *     ^ ^      ^  ^       ^
+ *     | |      |  |       detail              (dim)
+ *     | |      |  label                       (yellow)
+ *     | |      counters                       (dim, joined by " ")
+ *     | clock                                 (dim, m:ss)
+ *     spinner                                 (cyan, one frame per tick)
  *
  * A hard `columns - 1` budget is enforced per tick (`layout()` degrades
  * gracefully: truncate detail → drop detail → drop counters → drop clock →
