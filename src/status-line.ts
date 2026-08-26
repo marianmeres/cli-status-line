@@ -88,6 +88,22 @@ export interface StatusLineOptions {
 	 * nothing, or a function for a custom format. See {@link FallbackPolicy}.
 	 */
 	fallback?: FallbackPolicy;
+	/**
+	 * Hide the terminal cursor while the line is animated. Emits `\x1b[?25l`
+	 * at construction and restores with `\x1b[?25h` in `stop()`; also
+	 * registers `io.onExit(restore)` so a normal `unload` (including
+	 * `Deno.exit()`) puts the cursor back. Ignored on the non-animated path.
+	 * Default `false`.
+	 *
+	 * **Host contract — signals are the host's job.** This library never
+	 * calls `Deno.addSignalListener`: a `SIGINT` listener disables Deno's
+	 * default terminate-on-Ctrl-C behaviour, which would silently keep the
+	 * host alive. That means a signal-killed process bypasses `unload`, so
+	 * `onExit` does not fire and the cursor stays hidden. If the host wants
+	 * cursor restore on Ctrl-C, it must own the signal handler (typically by
+	 * calling `stop()` from its own handler before exiting).
+	 */
+	hideCursor?: boolean;
 	/** Inject a partial `Io` for tests; the rest defers to `denoIo`. */
 	io?: Partial<Io>;
 }
@@ -171,6 +187,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	const animated = isAnimated(io, options.enabled);
 	const runFallback = resolveFallback(options.fallback);
 	let lastFallbackLine: string | null = null;
+	const hideCursor = options.hideCursor === true;
 
 	const startedAt = io.now();
 	let stoppedAt: number | null = null;
@@ -181,6 +198,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	let paused = false;
 	let drawn = false;
 	let timer: number | undefined;
+	let unsubscribeOnExit: (() => void) | undefined;
 
 	function elapsed(): number {
 		return (stoppedAt ?? io.now()) - startedAt;
@@ -234,6 +252,20 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	}
 
 	if (animated) {
+		if (hideCursor) {
+			try {
+				io.write("\x1b[?25l");
+			} catch {
+				// never-throw
+			}
+			unsubscribeOnExit = io.onExit(() => {
+				try {
+					io.write("\x1b[?25h");
+				} catch {
+					// never-throw
+				}
+			});
+		}
 		draw();
 		// Some environments type `setInterval` as returning a `Timeout` object
 		// (Node compat shim); Deno's own runtime hands back a number and
@@ -338,6 +370,13 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 				}
 				if (text !== undefined) {
 					io.write(text + "\n");
+				}
+				if (hideCursor && animated) {
+					io.write("\x1b[?25h");
+				}
+				if (unsubscribeOnExit) {
+					unsubscribeOnExit();
+					unsubscribeOnExit = undefined;
 				}
 			} catch {
 				// never-throw
