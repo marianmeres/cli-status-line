@@ -33,11 +33,11 @@ Verify: deno fmt --check
 
 | Status | ID  | Deps    | Task                                                                                                                                                               | Source                            | Commit |
 | ------ | --- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | ------ |
-| ✅     | T01 | —       | `src/io.ts`: `Io` interface, `denoIo` (drain loop, non-throwing `env`, `onExit`), `resolveIo`; `tests/_fake-io.ts`; delete scaffold placeholders                   | [02](./02-io-and-lifecycle.md) #1 | —      |
-| ✅     | T02 | —       | `src/width.ts`: `displayWidth`, grapheme-safe `truncateToWidth`, `sanitize`; add `@std/cli`                                                                        | [01](./01-renderer.md) #1         | —      |
-| ✅     | T03 | T02     | `src/layout.ts`: pure `layout()` with the degradation ladder and hard `columns - 1` budget; `paint()` colours after truncation; add `@std/fmt`                     | [01](./01-renderer.md) #2         | —      |
-| ✅     | T04 | T01 T03 | `src/status-line.ts`: `statusLine()` runtime — tick-only draw, unref'd interval, `set`/`inc`, `log`, `pause`/`resume`, `stop`, post-stop no-ops, never-throw       | [02](./02-io-and-lifecycle.md) #3 | —      |
-| ✅     | T05 | T04     | `src/fallback.ts`: enabled detection (`isTerminal`, `TERM=dumb`, `CI`, `enabled` override) and `silent`/`notable`/custom policies via `io.write`; zero `console.*` | [02](./02-io-and-lifecycle.md) #2 | —      |
+| ✅     | T01 | —       | `src/io.ts`: `Io` interface, `denoIo` (drain loop, non-throwing `env`, `onExit`), `resolveIo`; `tests/_fake-io.ts`; delete scaffold placeholders                   | [02](./02-io-and-lifecycle.md) #1 | beb9e89 |
+| ✅     | T02 | —       | `src/width.ts`: `displayWidth`, grapheme-safe `truncateToWidth`, `sanitize`; add `@std/cli`                                                                        | [01](./01-renderer.md) #1         | bca52e3 |
+| ✅     | T03 | T02     | `src/layout.ts`: pure `layout()` with the degradation ladder and hard `columns - 1` budget; `paint()` colours after truncation; add `@std/fmt`                     | [01](./01-renderer.md) #2         | b3808af |
+| ✅     | T04 | T01 T03 | `src/status-line.ts`: `statusLine()` runtime — tick-only draw, unref'd interval, `set`/`inc`, `log`, `pause`/`resume`, `stop`, post-stop no-ops, never-throw       | [02](./02-io-and-lifecycle.md) #3 | 3f0e422 |
+| ✅     | T05 | T04     | `src/fallback.ts`: enabled detection (`isTerminal`, `TERM=dumb`, `CI`, `enabled` override) and `silent`/`notable`/custom policies via `io.write`; zero `console.*` | [02](./02-io-and-lifecycle.md) #2 | b092de2 |
 
 T04 also carries the redraw-scheduling finding [01](./01-renderer.md) #3 (tick-only drawing,
 `columns()` re-read per tick); its `Done when` is the union of both sections.
