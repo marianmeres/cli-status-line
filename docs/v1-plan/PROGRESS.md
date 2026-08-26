@@ -33,7 +33,7 @@ Verify: deno fmt --check
 
 | Status | ID  | Deps    | Task                                                                                                                                                               | Source                            | Commit |
 | ------ | --- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | ------ |
-| ⬜     | T01 | —       | `src/io.ts`: `Io` interface, `denoIo` (drain loop, non-throwing `env`, `onExit`), `resolveIo`; `tests/_fake-io.ts`; delete scaffold placeholders                   | [02](./02-io-and-lifecycle.md) #1 | —      |
+| ✅     | T01 | —       | `src/io.ts`: `Io` interface, `denoIo` (drain loop, non-throwing `env`, `onExit`), `resolveIo`; `tests/_fake-io.ts`; delete scaffold placeholders                   | [02](./02-io-and-lifecycle.md) #1 | —      |
 | ⬜     | T02 | —       | `src/width.ts`: `displayWidth`, grapheme-safe `truncateToWidth`, `sanitize`; add `@std/cli`                                                                        | [01](./01-renderer.md) #1         | —      |
 | ⬜     | T03 | T02     | `src/layout.ts`: pure `layout()` with the degradation ladder and hard `columns - 1` budget; `paint()` colours after truncation; add `@std/fmt`                     | [01](./01-renderer.md) #2         | —      |
 | ⬜     | T04 | T01 T03 | `src/status-line.ts`: `statusLine()` runtime — tick-only draw, unref'd interval, `set`/`inc`, `log`, `pause`/`resume`, `stop`, post-stop no-ops, never-throw       | [02](./02-io-and-lifecycle.md) #3 | —      |
