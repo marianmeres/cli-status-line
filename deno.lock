@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@marianmeres/release@*": "2.0.0",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/async@^1.5.0": "1.5.0",
     "jsr:@std/cli@*": "1.0.32",
@@ -14,6 +15,9 @@
     "jsr:@std/testing@^1.0.20": "1.0.20"
   },
   "jsr": {
+    "@marianmeres/release@2.0.0": {
+      "integrity": "a0358067f8500edaa795f22f6f962765a7f20edd6d8869c0793f11ee02fb47c0"
+    },
     "@std/assert@1.0.19": {
       "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
       "dependencies": [
