@@ -16,13 +16,10 @@ A fresh conversation should read this file first, then the relevant `NN-*.md` se
 > which is why `deno lint` is not a sprint-1 `Verify:` line; T01 deletes the placeholder and
 > sprint 2 adds the lint check.
 
-> **Driver caveat (checked 2026-08-26 against `@marianmeres/agents` c252835):** this tracker
-> follows `sprint/SPEC.md` §1, but the driver's parser lags the spec in two places —
-> `tracker.ts:32` does not list `🔒` (so the T10/T11 rows are reported as malformed and the run
-> is refused), and neither `tracker.ts` nor `cli.ts` reads the `Deps` column (selection is
-> document order only). Patch the driver (add `🔒` to `STATUS`; gate `selectNext` on `Deps`) or
-> run the tasks by hand. Row order here is already topological, so document-order selection is
-> safe once `🔒` parses.
+> **Driver caveat — RESOLVED 2026-08-26 (`@marianmeres/agents` 3dd85de).** This tracker follows
+> `sprint/SPEC.md` §1. The driver's parser used to lag the spec in two places (`🔒` missing from
+> `STATUS`, `Deps` never read), which is what D13 was about; both are now patched upstream, so
+> this plan runs unmodified. Row order here is topological anyway.
 
 ## First sprint (core: seam, width, layout, runtime, fallback)
 
@@ -48,26 +45,30 @@ Branch: `v1-release`
 Options: --max-tasks 5 --budget 40
 Verify: deno lint
 
-| Status | ID  | Deps    | Task                                                                                                                                                 | Source                                         | Commit |
-| ------ | --- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------ |
+| Status | ID  | Deps    | Task                                                                                                                                                 | Source                                         | Commit  |
+| ------ | --- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------- |
 | ✅     | T06 | T04     | `hideCursor` opt-in: hide at start, restore in `stop()` and via `io.onExit`; no signal listeners; JSDoc the host contract                            | [02](./02-io-and-lifecycle.md) #4              | 628cf75 |
 | ✅     | T07 | T05 T06 | Public surface: `mod.ts` exports, JSDoc on every export/option, drop unused `@std/fs`/`@std/path`, `deno publish --dry-run` clean, `scripts/demo.ts` | [03](./03-verification-port-and-release.md) #2 | bb1f0e8 |
 | ✅     | T08 | T07     | Port `sprint/src/activity.ts` to a thin adapter (path-mapped import); acceptance per proposal §9; API corrections flow back into `src/`              | [03](./03-verification-port-and-release.md) #3 | fc955be |
 | ✅     | T09 | T08     | `README.md` per the human docs guide, `AGENTS.md` per the agent docs guide; no private-package or sprint path mentions                               | [03](./03-verification-port-and-release.md) #4 | d8a33e6 |
-| 🔒     | T10 | T09     | Pre-release checklist, `deno task rp` → 0.1.0 on JSR                                                                                                 | [03](./03-verification-port-and-release.md) #5 | —      |
-| 🔒     | T11 | T10     | Flip `sprint/deno.json` import from the local path to `jsr:@marianmeres/cli-status-line@^0.1`; re-run sprint e2e                                     | [03](./03-verification-port-and-release.md) #5 | —      |
+| 🔒     | T10 | T09     | Pre-release checklist, `deno task rp` → 0.1.0 on JSR                                                                                                 | [03](./03-verification-port-and-release.md) #5 | —       |
+| 🔒     | T11 | T10     | Flip `sprint/deno.json` import from the local path to `jsr:@marianmeres/cli-status-line@^0.1`; re-run sprint e2e                                     | [03](./03-verification-port-and-release.md) #5 | —       |
 
 Sprint 2 inherits sprint 1's `Verify:` lines (`deno task test`, `deno fmt --check`) and adds
-`deno lint`. **Known lint debt (verified 2026-08-26 after sprint 1):** `deno lint` reports
-five `no-control-regex` errors in `src/width.ts` (the ANSI/control-char regexes — all
-intentional). The sprint-1 precondition assumed deleting the scaffold placeholder would
-leave lint green; it does not. Whoever opens sprint 2 adds a `deno-lint-ignore-file
-no-control-regex` (or per-line ignores) in T06 before the new `Verify:` line can pass.
-T08 changes `sprint/src/activity.ts` and `sprint/deno.json` in `@marianmeres/agents`,
-not in this repository — do it by hand or point the driver at the agents repo with this tracker;
-a driver confined to this repo cannot land it (only the API corrections it sends back to `src/`).
+`deno lint`. **Lint debt — cleared in T06:** `deno lint` used to report five `no-control-regex`
+errors in `src/width.ts` (the ANSI/control-char regexes, all intentional); T06 added a
+`deno-lint-ignore-file no-control-regex` and the new `Verify:` line has passed since.
+T08 changed `sprint/src/activity.ts` and `sprint/deno.json` in `@marianmeres/agents`, not in this
+repository — landed by hand there as `c828cca`; only the API corrections came back into `src/`.
 T10 and T11 are one human sitting: publish, then point sprint at the published version — T11 is
 marked human-only because it is a two-line edit in another repo that must not run before T10.
+
+**Sprint 2 closed 2026-08-26.** T06–T09 done and merged to `master`; verification at merge time:
+110 tests pass, `deno fmt --check` clean, `deno lint` clean, `deno check src/ tests/ scripts/
+examples/` clean, `deno publish --dry-run` succeeds. T10/T11 remain open by design — they are the
+owner's release sitting, and nothing in this repository is blocked on them. `sprint/deno.json`
+still resolves `@marianmeres/cli-status-line` by workspace path, which works today; T11 is the
+switch to the published version, not a fix.
 
 ## Backlog (ranked, post-sprint)
 
@@ -120,6 +121,13 @@ one file with no public API change); **T14** a caller needs a different order th
 - **2026-08-26** — **D13** Tracker keeps the `🔒` rows (T10, T11) per `sprint/SPEC.md`; the
   driver gets patched (`🔒` in `STATUS`, `Deps` gating) before any automated run of this plan —
   owner's call at the decision interview.
+- **2026-08-26** — **D14** The published tarball ships `src/` + `README.md` + `LICENSE` only;
+  `deno.json` gains `publish.exclude` for `.*`, `tests/**`, `docs/**`, `scripts/**`,
+  `examples/**`, `tmp/**`. The v1 plan docs are repository history, not package payload, and
+  `docs/v1-plan/` alone was ~54 KB of the dry-run manifest (finalisation pass, owner-confirmed).
+- **2026-08-26** — **D15** `deno.json` maps `@marianmeres/cli-status-line` → `./src/mod.ts` so
+  `examples/` import the package by its real name and are copy-pasteable as written; the same
+  self-mapping convention as `@marianmeres/fsm` (finalisation pass).
 - **2026-08-26** — **Ratified.** D1–D12 were proposed at PLAN time and confirmed one by one by
   the owner in an interactive decision interview the same day; no defaults changed. Every task
   is runnable (`⬜`) except the human-only `🔒` rows.
