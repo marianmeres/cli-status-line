@@ -22,6 +22,12 @@
  * it removes an entire class of coalescing/dirty-flag bugs.
  */
 
+import {
+	type FallbackPolicy,
+	isAnimated,
+	resolveFallback,
+	type StatusSnapshot,
+} from "./fallback.ts";
 import { type Io, resolveIo } from "./io.ts";
 import { layout, paint } from "./layout.ts";
 import { sanitize } from "./width.ts";
@@ -70,11 +76,18 @@ export interface StatusLineOptions {
 	/** Counters to show in declaration order. Default `[]` (none). */
 	counters?: readonly CounterDecl[];
 	/**
-	 * Force the animated path on or off. When omitted, T05 replaces this
-	 * default with a proper tty / TERM / CI check; for now the animated
-	 * path runs whenever no explicit value is given.
+	 * Force the animated path on or off. When omitted, `statusLine()`
+	 * auto-detects: animated iff `io.isTerminal() && TERM !== "dumb" && !CI`
+	 * (where `CI` is any value other than `""`, `"0"`, `"false"`). Explicit
+	 * `true` / `false` always wins over the probe (decision D9).
 	 */
 	enabled?: boolean;
+	/**
+	 * How to emit updates when the animated path is off. Default `"notable"`
+	 * — one line per `set(…, { notable: true })`. Use `"silent"` to write
+	 * nothing, or a function for a custom format. See {@link FallbackPolicy}.
+	 */
+	fallback?: FallbackPolicy;
 	/** Inject a partial `Io` for tests; the rest defers to `denoIo`. */
 	io?: Partial<Io>;
 }
@@ -155,10 +168,9 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	const counterState = new Map<string, number>();
 	for (const c of counterDecls) counterState.set(c.key, 0);
 
-	// T04 keeps the default open: `enabled` when unset means "animate". T05
-	// replaces the fallback with an `isTerminal() && TERM !== "dumb" && !CI`
-	// probe. Explicit `enabled: true` / `false` already routes correctly.
-	const animated = options.enabled ?? true;
+	const animated = isAnimated(io, options.enabled);
+	const runFallback = resolveFallback(options.fallback);
+	let lastFallbackLine: string | null = null;
 
 	const startedAt = io.now();
 	let stoppedAt: number | null = null;
@@ -172,6 +184,12 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 
 	function elapsed(): number {
 		return (stoppedAt ?? io.now()) - startedAt;
+	}
+
+	function snapshotCounters(): Readonly<Record<string, number>> {
+		const out: Record<string, number> = {};
+		for (const [k, v] of counterState) out[k] = v;
+		return out;
 	}
 
 	function renderFrame(): string {
@@ -228,14 +246,30 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 		set(
 			rawLabel: string,
 			rawDetail: string = "",
-			_opts?: StatusLineSetOptions,
+			opts?: StatusLineSetOptions,
 		): void {
 			if (!live) return;
 			try {
 				label = sanitize(rawLabel ?? "");
 				detail = sanitize(rawDetail ?? "");
-				// Tick-only drawing (D4). T05 will run the fallback policy here
-				// when `animated` is false.
+				// Tick-only drawing (D4) for the animated path; the fallback
+				// path emits on set() because there is no tick to piggyback on.
+				if (!animated) {
+					const elapsedNow = elapsed();
+					const snap: StatusSnapshot = {
+						elapsedMs: elapsedNow,
+						clock: showClock ? formatClock(elapsedNow) : "",
+						label,
+						detail,
+						counters: snapshotCounters(),
+						notable: !!opts?.notable,
+					};
+					const line = runFallback(snap);
+					if (line && line !== lastFallbackLine) {
+						io.write(line + "\n");
+						lastFallbackLine = line;
+					}
+				}
 			} catch {
 				// never-throw
 			}
