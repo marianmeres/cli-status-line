@@ -31,8 +31,8 @@ Options: --max-tasks 5 --budget 40 --model claude-opus-5
 Verify: deno task test
 Verify: deno fmt --check
 
-| Status | ID  | Deps    | Task                                                                                                                                                               | Source                            | Commit |
-| ------ | --- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | ------ |
+| Status | ID  | Deps    | Task                                                                                                                                                               | Source                            | Commit  |
+| ------ | --- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | ------- |
 | ✅     | T01 | —       | `src/io.ts`: `Io` interface, `denoIo` (drain loop, non-throwing `env`, `onExit`), `resolveIo`; `tests/_fake-io.ts`; delete scaffold placeholders                   | [02](./02-io-and-lifecycle.md) #1 | beb9e89 |
 | ✅     | T02 | —       | `src/width.ts`: `displayWidth`, grapheme-safe `truncateToWidth`, `sanitize`; add `@std/cli`                                                                        | [01](./01-renderer.md) #1         | bca52e3 |
 | ✅     | T03 | T02     | `src/layout.ts`: pure `layout()` with the degradation ladder and hard `columns - 1` budget; `paint()` colours after truncation; add `@std/fmt`                     | [01](./01-renderer.md) #2         | b3808af |
@@ -58,7 +58,12 @@ Verify: deno lint
 | 🔒     | T11 | T10     | Flip `sprint/deno.json` import from the local path to `jsr:@marianmeres/cli-status-line@^0.1`; re-run sprint e2e                                     | [03](./03-verification-port-and-release.md) #5 | —      |
 
 Sprint 2 inherits sprint 1's `Verify:` lines (`deno task test`, `deno fmt --check`) and adds
-`deno lint`. T08 changes `sprint/src/activity.ts` and `sprint/deno.json` in `@marianmeres/agents`,
+`deno lint`. **Known lint debt (verified 2026-08-26 after sprint 1):** `deno lint` reports
+five `no-control-regex` errors in `src/width.ts` (the ANSI/control-char regexes — all
+intentional). The sprint-1 precondition assumed deleting the scaffold placeholder would
+leave lint green; it does not. Whoever opens sprint 2 adds a `deno-lint-ignore-file
+no-control-regex` (or per-line ignores) in T06 before the new `Verify:` line can pass.
+T08 changes `sprint/src/activity.ts` and `sprint/deno.json` in `@marianmeres/agents`,
 not in this repository — do it by hand or point the driver at the agents repo with this tracker;
 a driver confined to this repo cannot land it (only the API corrections it sends back to `src/`).
 T10 and T11 are one human sitting: publish, then point sprint at the published version — T11 is
