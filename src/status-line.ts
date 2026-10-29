@@ -246,7 +246,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 		if (!live || paused || !animated) return;
 		try {
 			const painted = renderFrame();
-			io.write("\r" + painted + "\x1b[K");
+			io.write(`\r${painted}\x1b[K`);
 			drawn = true;
 		} catch {
 			// never-throw; drawn stays false so we don't erase what isn't there.
@@ -286,11 +286,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	}
 
 	const api: StatusLine = {
-		set(
-			rawLabel: string,
-			rawDetail: string = "",
-			opts?: StatusLineSetOptions,
-		): void {
+		set(rawLabel: string, rawDetail: string = "", opts?: StatusLineSetOptions): void {
 			if (!live) return;
 			try {
 				label = sanitize(rawLabel ?? "");
@@ -309,7 +305,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 					};
 					const line = runFallback(snap);
 					if (line && line !== lastFallbackLine) {
-						io.write(line + "\n");
+						io.write(`${line}\n`);
 						lastFallbackLine = line;
 					}
 				}
@@ -334,7 +330,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 					io.write("\r\x1b[K");
 					drawn = false;
 				}
-				io.write(msg + "\n");
+				io.write(`${msg}\n`);
 			} catch {
 				// never-throw
 			}
@@ -380,7 +376,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 					drawn = false;
 				}
 				if (text !== undefined) {
-					io.write(text + "\n");
+					io.write(`${text}\n`);
 				}
 				if (hideCursor && animated) {
 					io.write("\x1b[?25h");

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import { makeFakeIo } from "./_fake-io.ts";
 import { statusLine } from "../src/status-line.ts";
+import { makeFakeIo } from "./_fake-io.ts";
 
 const HIDE = "\x1b[?25l";
 const SHOW = "\x1b[?25h";

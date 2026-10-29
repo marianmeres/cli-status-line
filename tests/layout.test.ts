@@ -121,7 +121,10 @@ test("layout: columns = 80 fits everything", () => {
 		label: "compile really long",
 		detail: "src/very/long/path.ts",
 	});
-	assert.deepEqual(plain(parts), "⠋ 1:23 · 3⚒ compile really long src/very/long/path.ts");
+	assert.deepEqual(
+		plain(parts),
+		"⠋ 1:23 · 3⚒ compile really long src/very/long/path.ts",
+	);
 	assert(widthOk(plain(parts), 80));
 });
 
@@ -132,29 +135,9 @@ test("layout: columns = 200 fits everything (identical to width 80)", () => {
 test("layout: width budget property — every width in a broad sweep", () => {
 	// The key invariant. If this ever fails, the terminal wraps and \r hits
 	// the wrong row.
-	for (
-		const cols of [
-			0,
-			1,
-			2,
-			3,
-			4,
-			5,
-			6,
-			8,
-			10,
-			15,
-			16,
-			20,
-			24,
-			30,
-			40,
-			60,
-			80,
-			120,
-			200,
-		]
-	) {
+	for (const cols of [
+		0, 1, 2, 3, 4, 5, 6, 8, 10, 15, 16, 20, 24, 30, 40, 60, 80, 120, 200,
+	]) {
 		const painted = plain(layout(FULL, cols));
 		const w = displayWidth(painted);
 		assert(
@@ -205,34 +188,43 @@ test("layout: no label, no detail — head-only when it fits", () => {
 });
 
 test("layout: multiple counters render joined by a single space", () => {
-	const parts = layout({
-		spinner: "⠋",
-		clock: "0:05",
-		counters: ["3⚒", "5⚠"],
-		label: "x",
-	}, 80);
+	const parts = layout(
+		{
+			spinner: "⠋",
+			clock: "0:05",
+			counters: ["3⚒", "5⚠"],
+			label: "x",
+		},
+		80,
+	);
 	assert.deepEqual(parts.counters, "3⚒ 5⚠");
 	assert.deepEqual(plain(parts), "⠋ 0:05 · 3⚒ 5⚠ x");
 });
 
 test("layout: label present, detail absent — label may fill the tail", () => {
-	const parts = layout({
-		spinner: "⠋",
-		clock: "1:23",
-		counters: ["3⚒"],
-		label: "compile really long",
-	}, 40);
+	const parts = layout(
+		{
+			spinner: "⠋",
+			clock: "1:23",
+			counters: ["3⚒"],
+			label: "compile really long",
+		},
+		40,
+	);
 	// budget=39 · head=11 · room=27 · label=19 fits · no detail
 	assert.deepEqual(parts.label, "compile really long");
 	assert.deepEqual(parts.detail, "");
 });
 
 test("layout: detail present, label absent — detail is placed in the tail", () => {
-	const parts = layout({
-		spinner: "⠋",
-		clock: "1:23",
-		detail: "hello",
-	}, 40);
+	const parts = layout(
+		{
+			spinner: "⠋",
+			clock: "1:23",
+			detail: "hello",
+		},
+		40,
+	);
 	assert.deepEqual(parts.label, "");
 	assert.deepEqual(parts.detail, "hello");
 	assert.deepEqual(plain(parts), "⠋ 1:23 hello");

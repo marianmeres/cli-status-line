@@ -37,7 +37,10 @@ async function frameAt(columns: number): Promise<string> {
 	const line = statusLine({
 		enabled: true, // force animation even though we are capturing, not drawing
 		intervalMs: 20,
-		counters: [{ key: "files", glyph: "✎" }, { key: "warn", glyph: "!" }],
+		counters: [
+			{ key: "files", glyph: "✎" },
+			{ key: "warn", glyph: "!" },
+		],
 		io: {
 			columns: () => columns,
 			write: (s: string) => {
@@ -59,7 +62,7 @@ async function frameAt(columns: number): Promise<string> {
 }
 
 console.log("width │ frame");
-console.log("──────┼" + "─".repeat(70));
+console.log(`──────┼${"─".repeat(70)}`);
 
 for (const w of [80, 60, 40, 30, 22, 16, 10, 6, 3, 1]) {
 	const frame = await frameAt(w);

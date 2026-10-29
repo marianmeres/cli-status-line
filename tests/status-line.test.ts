@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import { makeFakeIo } from "./_fake-io.ts";
 import { statusLine } from "../src/status-line.ts";
+import { makeFakeIo } from "./_fake-io.ts";
 
 function withFakeTime(fn: (time: typeof mock.timers) => void): void {
 	mock.timers.enable({ apis: ["setInterval", "Date"], now: 0 });
@@ -75,7 +75,7 @@ test("ten set() calls between ticks produce exactly one write, reflecting the la
 		try {
 			// Baseline: the initial draw.
 			const initial = io.writes.length;
-			for (let i = 0; i < 10; i++) sl.set("label" + i, "detail" + i);
+			for (let i = 0; i < 10; i++) sl.set(`label${i}`, `detail${i}`);
 			// set() never draws.
 			assert.deepEqual(io.writes.length, initial);
 			time.tick(100);

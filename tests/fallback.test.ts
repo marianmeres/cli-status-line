@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { mock, test } from "node:test";
-import { makeFakeIo } from "./_fake-io.ts";
 import {
 	FALLBACK_LINE_MAX,
 	type FallbackPolicy,
@@ -13,6 +12,7 @@ import {
 } from "../src/fallback.ts";
 import { statusLine } from "../src/status-line.ts";
 import { displayWidth } from "../src/width.ts";
+import { makeFakeIo } from "./_fake-io.ts";
 
 function withFakeTime(fn: (time: typeof mock.timers) => void): void {
 	mock.timers.enable({ apis: ["setInterval", "Date"], now: 0 });

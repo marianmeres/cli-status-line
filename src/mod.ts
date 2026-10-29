@@ -53,7 +53,8 @@
  * @module
  */
 
-export { ASCII_FRAMES, BRAILLE_FRAMES, statusLine } from "./status-line.ts";
+export type { FallbackPolicy, StatusSnapshot } from "./fallback.ts";
+export type { Io } from "./io.ts";
 export type {
 	CounterDecl,
 	StatusLine,
@@ -61,5 +62,4 @@ export type {
 	StatusLineSetOptions,
 	StatusLineStopOptions,
 } from "./status-line.ts";
-export type { FallbackPolicy, StatusSnapshot } from "./fallback.ts";
-export type { Io } from "./io.ts";
+export { ASCII_FRAMES, BRAILLE_FRAMES, statusLine } from "./status-line.ts";

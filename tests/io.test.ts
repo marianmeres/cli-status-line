@@ -46,7 +46,7 @@ test("resolveIo(partial) overrides every member independently", () => {
 test("nodeIo.env never throws and returns undefined for unset keys", () => {
 	// A key we're confident isn't set. The point is that the call itself doesn't throw,
 	// even under a runtime that gates environment access.
-	const v = nodeIo.env("__cli_status_line_definitely_unset_" + Math.random());
+	const v = nodeIo.env(`__cli_status_line_definitely_unset_${Math.random()}`);
 	assert.deepEqual(v, undefined);
 });
 

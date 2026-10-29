@@ -21,8 +21,8 @@
 
 import {
 	type FallbackPolicy,
-	statusLine,
 	type StatusSnapshot,
+	statusLine,
 } from "@marianmeres/cli-status-line";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -64,15 +64,13 @@ async function run(title: string, fallback: FallbackPolicy) {
 		counters: [{ key: "steps", glyph: "⚒" }],
 	});
 
-	for (
-		const [label, detail, notable] of [
-			["fetching", "index.json", false],
-			["fetching", "index.json (304)", true],
-			["applying", "12 changes", true],
-			["applying", "12 changes", true], // identical line → suppressed
-			["done", "", true],
-		] as const
-	) {
+	for (const [label, detail, notable] of [
+		["fetching", "index.json", false],
+		["fetching", "index.json (304)", true],
+		["applying", "12 changes", true],
+		["applying", "12 changes", true], // identical line → suppressed
+		["done", "", true],
+	] as const) {
 		line.inc("steps");
 		line.set(label, detail, { notable });
 		await sleep(120);

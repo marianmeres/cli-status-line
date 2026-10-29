@@ -65,9 +65,7 @@ export type FallbackPolicy =
  * and emoji.
  */
 export function renderNotable(snap: StatusSnapshot): string {
-	const parts = ["⋯", snap.clock, snap.label, snap.detail].filter(
-		(s) => s !== "",
-	);
+	const parts = ["⋯", snap.clock, snap.label, snap.detail].filter((s) => s !== "");
 	return truncateToWidth(parts.join(" "), FALLBACK_LINE_MAX);
 }
 
