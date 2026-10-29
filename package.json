@@ -1,6 +1,6 @@
 {
   "name": "@marianmeres/cli-status-line",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Single-line, tick-only CLI status renderer with a plain-text fallback for redirected output.",
   "license": "MIT",
   "author": "Marian Meres",
