@@ -52,7 +52,7 @@ Verify: deno lint
 | ✅     | T08 | T07     | Port `sprint/src/activity.ts` to a thin adapter (path-mapped import); acceptance per proposal §9; API corrections flow back into `src/`              | [03](./03-verification-port-and-release.md) #3 | fc955be |
 | ✅     | T09 | T08     | `README.md` per the human docs guide, `AGENTS.md` per the agent docs guide; no private-package or sprint path mentions                               | [03](./03-verification-port-and-release.md) #4 | d8a33e6 |
 | ✅     | T10 | T09     | Pre-release checklist, `deno task rp` → 0.1.0 on JSR                                                                                                 | [03](./03-verification-port-and-release.md) #5 | —       |
-| 🔒     | T11 | T10     | Flip `sprint/deno.json` import from the local path to `jsr:@marianmeres/cli-status-line@^0.1`; re-run sprint e2e                                     | [03](./03-verification-port-and-release.md) #5 | —       |
+| ✅     | T11 | T10     | Flip `sprint/deno.json` import from the local path to `jsr:@marianmeres/cli-status-line@^0.2`; re-run sprint e2e                                     | [03](./03-verification-port-and-release.md) #5 | —       |
 
 Sprint 2 inherits sprint 1's `Verify:` lines (`deno task test`, `deno fmt --check`) and adds
 `deno lint`. **Lint debt — cleared in T06:** `deno lint` used to report five `no-control-regex`
@@ -63,15 +63,20 @@ repository — landed by hand there as `c828cca`; only the API corrections came 
 T10 and T11 are one human sitting: publish, then point sprint at the published version — T11 is
 marked human-only because it is a two-line edit in another repo that must not run before T10.
 **T10 landed 2026-08-26**: `0.1.0` is live on JSR (no commit hash — the publish did not change
-this repository). T11 is still open; `sprint/deno.json` continues to resolve the package by
-workspace path.
+this repository). **T11 landed 2026-08-26** as well, against `^0.2` rather than `^0.1` — `0.2.0`
+had shipped by then and is what the port was written against. Like T08 it is a change in
+`@marianmeres/agents`, not here, so it carries no hash in this tracker: `sprint/deno.json` now
+resolves `jsr:@marianmeres/cli-status-line@^0.2` and `deno.lock` pins `0.2.0`. One wrinkle worth
+remembering — Deno's 24h minimum-dependency-age policy refuses a version published hours ago, so
+the first resolve needed `deno install --min-dep-age 0`; once the lockfile pins the version, plain
+`deno check`/`deno test` work with a cold cache and no flag.
 
 **Sprint 2 closed 2026-08-26.** T06–T09 done and merged to `master`; verification at merge time:
 110 tests pass, `deno fmt --check` clean, `deno lint` clean, `deno check src/ tests/ scripts/
 examples/` clean, `deno publish --dry-run` succeeds. T10 has since landed (0.1.0 published to
-JSR on 2026-08-26). Only T11 remains open, by design: `sprint/deno.json` still resolves
-`@marianmeres/cli-status-line` by workspace path, which works today, so T11 is the switch to the
-published version, not a fix. Nothing in this repository is blocked on it.
+JSR on 2026-08-26), and T11 with it: `sprint/deno.json` resolves the published package, and the
+sprint suite (88 checks, unit + e2e) passes against it. Nothing in this repository was blocked on
+either.
 
 ## Backlog (ranked, post-sprint)
 
