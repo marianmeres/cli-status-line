@@ -1,7 +1,8 @@
 # @marianmeres/cli-status-line
 
+[![NPM](https://img.shields.io/npm/v/@marianmeres/cli-status-line)](https://www.npmjs.com/package/@marianmeres/cli-status-line)
 [![JSR](https://jsr.io/badges/@marianmeres/cli-status-line)](https://jsr.io/@marianmeres/cli-status-line)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/npm/l/@marianmeres/cli-status-line)](LICENSE)
 
 Reassurance at a glance for long-running CLI work: one line at the bottom of the
 terminal that rewrites itself in place with a spinner, an elapsed clock,
@@ -32,8 +33,12 @@ exact order and a worked example.
 ## Installation
 
 ```bash
-deno add jsr:@marianmeres/cli-status-line
+npm install @marianmeres/cli-status-line
 ```
+
+Node 24.12 or newer, zero runtime dependencies. The same source is on JSR for
+Deno consumers (`deno add jsr:@marianmeres/cli-status-line`); it uses `node:*`
+only, which Deno runs through its Node compatibility.
 
 ## Usage
 
@@ -61,12 +66,12 @@ skipped entirely: no `\r`, no spinner frames, just at most one plain line per
 
 ## Examples
 
-[`examples/`](./examples/) has one runnable script per topic — clone the repo and
-run any of them directly, no arguments or setup:
+[`examples/`](./examples/) has one runnable script per topic — clone the repo,
+`pnpm install`, and run any of them, no arguments or setup:
 
 ```bash
-deno run examples/01-basic.ts
-deno run examples/02-counters-and-log.ts | cat   # same code, non-animated path
+pnpm -s example examples/01-basic.ts
+pnpm -s example examples/02-counters-and-log.ts | cat   # same code, non-animated path
 ```
 
 | Script                                                                      | Shows                                                  |
@@ -76,11 +81,11 @@ deno run examples/02-counters-and-log.ts | cat   # same code, non-animated path
 | [`03-non-tty-fallback.ts`](./examples/03-non-tty-fallback.ts)               | What lands in a log file under a pipe or in CI         |
 | [`04-custom-fallback.ts`](./examples/04-custom-fallback.ts)                 | Owning that format with a `FallbackPolicy` function    |
 | [`05-narrow-terminal.ts`](./examples/05-narrow-terminal.ts)                 | The degradation ladder, rendered at ten widths at once |
-| [`06-pause-for-prompt.ts`](./examples/06-pause-for-prompt.ts)               | `pause()` / `resume()` around a blocking `confirm()`   |
+| [`06-pause-for-prompt.ts`](./examples/06-pause-for-prompt.ts)               | `pause()` / `resume()` around a `readline` question    |
 | [`07-hide-cursor-and-signals.ts`](./examples/07-hide-cursor-and-signals.ts) | `hideCursor` and the host-owned `SIGINT` handler       |
 
 Note that `COLUMNS=40` does **not** narrow the line: width comes from
-`Deno.consoleSize()`, re-read on every tick. Resize the window, or see
+`process.stdout.columns`, re-read on every tick. Resize the window, or see
 [`05-narrow-terminal.ts`](./examples/05-narrow-terminal.ts), which injects
 `columns()` through the `io` seam.
 
@@ -93,19 +98,11 @@ Two contracts are worth knowing before you reach for them:
 
 - **`hideCursor` and signals.** The library restores the cursor in `stop()` and
   on a normal exit, but it never registers a signal listener — that would
-  disable Deno's terminate-on-Ctrl-C. If you want the cursor back after Ctrl-C,
+  disable the default terminate-on-Ctrl-C. If you want the cursor back after Ctrl-C,
   own the handler and call `stop()` from it. See
   [Cursor contract](API.md#cursor-contract).
 - **Counter glyphs must be text-presentation.** `"⚒"` is one column; `"⚒️"` (with
   U+FE0F) measures as one but draws as two, which overflows the line.
-
-## Deno only — why
-
-The library reaches for `Deno.stdout.writeSync`, `Deno.consoleSize`,
-`Deno.stdout.isTerminal`, `Deno.env.get`, and `Deno.unrefTimer` through a
-single seam (`Io` in `src/io.ts`). A Node adapter is a one-file change with
-no public API surface impact; it is deliberately deferred until a Node
-consumer exists.
 
 ## Scope
 

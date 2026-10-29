@@ -22,6 +22,7 @@
  * it removes an entire class of coalescing/dirty-flag bugs.
  */
 
+import { isColor } from "./colors.ts";
 import {
 	type FallbackPolicy,
 	isAnimated,
@@ -101,20 +102,20 @@ export interface StatusLineOptions {
 	/**
 	 * Hide the terminal cursor while the line is animated. Emits `\x1b[?25l`
 	 * at construction and restores with `\x1b[?25h` in `stop()`; also
-	 * registers `io.onExit(restore)` so a normal `unload` (including
-	 * `Deno.exit()`) puts the cursor back. Ignored on the non-animated path.
+	 * registers `io.onExit(restore)` so a normal exit (including
+	 * `process.exit()`) puts the cursor back. Ignored on the non-animated path.
 	 * Default `false`.
 	 *
 	 * **Host contract — signals are the host's job.** This library never
-	 * calls `Deno.addSignalListener`: a `SIGINT` listener disables Deno's
+	 * calls `process.on("SIGINT", …)`: a `SIGINT` listener disables the
 	 * default terminate-on-Ctrl-C behaviour, which would silently keep the
-	 * host alive. That means a signal-killed process bypasses `unload`, so
+	 * host alive. That means a signal-killed process never emits `exit`, so
 	 * `onExit` does not fire and the cursor stays hidden. If the host wants
 	 * cursor restore on Ctrl-C, it must own the signal handler (typically by
 	 * calling `stop()` from its own handler before exiting).
 	 */
 	hideCursor?: boolean;
-	/** Inject a partial `Io` for tests; the rest defers to `denoIo`. */
+	/** Inject a partial `Io` for tests; the rest defers to the built-in `node:process` one. */
 	io?: Partial<Io>;
 }
 
@@ -160,8 +161,8 @@ export interface StatusLine {
 	log(...args: unknown[]): void;
 	/**
 	 * Erase the frame and suspend redraws until `resume()`. Synchronous by
-	 * design: `confirm()` / `prompt()` block the event loop, so the timer
-	 * cannot do this cleanup. Idempotent.
+	 * design: the prompt the host is about to print must land on a clean
+	 * line, and the next tick would come too late to clean it. Idempotent.
 	 */
 	pause(): void;
 	/** Resume redraws after a `pause()`. Idempotent; the next tick redraws. */
@@ -195,6 +196,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	for (const c of counterDecls) counterState.set(c.key, 0);
 
 	const animated = isAnimated(io, options.enabled);
+	const color = isColor(io);
 	const runFallback = resolveFallback(options.fallback);
 	let lastFallbackLine: string | null = null;
 	const hideCursor = options.hideCursor === true;
@@ -207,7 +209,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 	let live = true;
 	let paused = false;
 	let drawn = false;
-	let timer: number | undefined;
+	let timer: ReturnType<typeof setInterval> | undefined;
 	let unsubscribeOnExit: (() => void) | undefined;
 
 	function elapsed(): number {
@@ -237,7 +239,7 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 			},
 			cols,
 		);
-		return paint(parts);
+		return paint(parts, color);
 	}
 
 	function draw(): void {
@@ -277,10 +279,9 @@ export function statusLine(options: StatusLineOptions = {}): StatusLine {
 			});
 		}
 		draw();
-		// Some environments type `setInterval` as returning a `Timeout` object
-		// (Node compat shim); Deno's own runtime hands back a number and
-		// `clearInterval` / `unrefTimer` accept it. Cast once at the boundary.
-		timer = setInterval(tick, intervalMs) as unknown as number;
+		// The global `setInterval`, not `node:timers`: the tests' mock timers only
+		// intercept the global one.
+		timer = setInterval(tick, intervalMs);
 		io.unrefTimer(timer);
 	}
 

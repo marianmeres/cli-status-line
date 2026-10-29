@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run
+#!/usr/bin/env -S node --conditions=@marianmeres/source
 /**
  * The degradation ladder, made visible.
  *
@@ -11,13 +11,13 @@
  *
  * Colour is applied *after* truncation, so ANSI bytes never eat into the width.
  *
- * Width comes from `Deno.consoleSize()`, re-read on every tick — which is how a
+ * Width comes from `process.stdout.columns`, re-read on every tick — which is how a
  * resize is handled without a `SIGWINCH` listener, and also why setting
  * `COLUMNS=40` does nothing: that variable is a shell convention, not something
  * the terminal reports. To render at a chosen width, inject `columns()` through
  * the `io` seam, which is what this example does.
  *
- *     deno run examples/05-narrow-terminal.ts
+ *     pnpm -s example examples/05-narrow-terminal.ts
  */
 
 import { statusLine } from "@marianmeres/cli-status-line";
@@ -42,7 +42,7 @@ async function frameAt(columns: number): Promise<string> {
 			columns: () => columns,
 			write: (s: string) => {
 				// Frames arrive as "\r" + painted + "\x1b[K"; keep the middle.
-				// deno-lint-ignore no-control-regex -- matching the ESC is the point
+				// biome-ignore lint/suspicious/noControlCharactersInRegex: matching the ESC is the point
 				const eraseToEol = /\x1b\[K$/;
 				if (s.startsWith("\r")) last = s.slice(1).replace(eraseToEol, "");
 			},

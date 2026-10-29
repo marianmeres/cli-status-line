@@ -1,7 +1,6 @@
-// deno-lint-ignore-file no-control-regex
-// The regexes below match ANSI escape sequences and C0/C1 control characters
-// by their literal byte values; the control characters in the patterns are the
-// point, not an oversight.
+// biome-ignore-all lint/suspicious/noControlCharactersInRegex: the regexes below match
+// ANSI escape sequences and C0/C1 control characters by their literal byte values; the
+// control characters in the patterns are the point, not an oversight.
 
 /**
  * Display-width helpers used by the renderer to compose one line that never
@@ -18,7 +17,7 @@
  * single space. A newline would otherwise break the single-line contract.
  */
 
-import { unicodeWidth } from "@std/cli/unicode-width";
+import { unicodeWidth } from "./unicode-width.ts";
 
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
@@ -37,7 +36,7 @@ const LONE_ESC = /\x1b/g;
 const CONTROL_LEFTOVER = /[\x00-\x08\x0e-\x1f\x7f-\x9f]/g;
 
 /**
- * Terminal columns occupied by `s`. Wraps `unicodeWidth` from `@std/cli`.
+ * Terminal columns occupied by `s`. Wraps `unicodeWidth`, vendored from `@std/cli`.
  *
  * Note: an ANSI escape sequence is counted by its codepoints, not as zero.
  * That is why the renderer applies colour only after truncation.

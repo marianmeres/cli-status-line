@@ -4,12 +4,14 @@ Runnable scripts, smallest first. Each one is self-contained — no arguments, n
 setup — and each is built around a single question the API answers.
 
 ```sh
-deno run examples/01-basic.ts
+pnpm -s example examples/01-basic.ts
 ```
 
-They import the package by its real name (`@marianmeres/cli-status-line`),
-mapped to `./src/mod.ts` in this repository's `deno.json`, so the import line in
-each file is the line you would write in your own project.
+They import the package by its real name (`@marianmeres/cli-status-line`), so the
+import line in each file is the line you would write in your own project. Inside this
+repository that name resolves to `./src/mod.ts` through the `@marianmeres/source`
+export condition in `package.json`; `pnpm example` is just
+`node --conditions=@marianmeres/source`, which turns it on.
 
 | Script                                                             | The question it answers                                                                         |
 | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
@@ -27,13 +29,13 @@ The interesting split is animated-vs-not, and you can see it from any of these
 without changing a line:
 
 ```sh
-deno run examples/02-counters-and-log.ts         # animated
-deno run examples/02-counters-and-log.ts | cat   # notable lines only
-CI=1 deno run examples/02-counters-and-log.ts    # same, on a tty
+pnpm -s example examples/02-counters-and-log.ts         # animated
+pnpm -s example examples/02-counters-and-log.ts | cat   # notable lines only
+CI=1 pnpm -s example examples/02-counters-and-log.ts    # same, on a tty
 ```
 
 `COLUMNS=40` does **not** narrow the line — width comes from
-`Deno.consoleSize()`, not the environment. Resize the terminal window, or see
+`process.stdout.columns`, not the environment. Resize the terminal window, or see
 [`05-narrow-terminal.ts`](./05-narrow-terminal.ts) for rendering at a chosen
 width through the `io` seam.
 

@@ -1,0 +1,30 @@
+{
+	// Editor + `pnpm run typecheck` view: src, tests, examples and scripts, no output. Node
+	// runs the source with its types stripped and never checks them, so this is the type gate.
+	"compilerOptions": {
+		"target": "es2024",
+		"lib": ["es2024"],
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"types": ["node"],
+		// examples/ and scripts/ import the package by name; this condition resolves that
+		// self-reference to src/ instead of dist/ (see package.json "exports")
+		"customConditions": ["@marianmeres/source"],
+
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"noFallthroughCasesInSwitch": true,
+		"skipLibCheck": true,
+
+		// erasable-only TS: what Node's type stripping can run unchanged
+		"verbatimModuleSyntax": true,
+		"erasableSyntaxOnly": true,
+		// imports keep their `.ts` extension in source; tsc rewrites them to `.js` on emit
+		"allowImportingTsExtensions": true,
+		"rewriteRelativeImportExtensions": true,
+
+		"noEmit": true
+	},
+	"include": ["src", "tests", "examples", "scripts"]
+}

@@ -1,11 +1,13 @@
 /**
- * In-memory `Io` fake for tests. Filename starts with an underscore so `deno test`
- * treats it as a helper module, not a test suite.
+ * In-memory `Io` fake for tests. Not a suite: `pnpm test` only runs `*.test.ts`.
  *
  * Records every `write` in order and exposes a joined `output()` for byte-exact
  * goldens. Every reachable knob (`columns`, `isTerminal`, `env`, `now`, throwing
  * `write`) is mutable so a single test can set up state before construction and
  * flip it mid-run without allocating a new fake.
+ *
+ * `NO_COLOR=1` is in the env by default so goldens are byte-exact; a test that wants
+ * colour calls `setEnv("NO_COLOR", undefined)` before constructing the status line.
  */
 
 import type { Io } from "../src/io.ts";
@@ -20,14 +22,14 @@ export interface FakeIoInit {
 export interface FakeIo extends Io {
 	/** Every string passed to `write`, in the order it arrived. */
 	readonly writes: string[];
-	/** Timer ids passed to `unrefTimer`. */
-	readonly unrefCalls: number[];
+	/** Timers passed to `unrefTimer`. */
+	readonly unrefCalls: unknown[];
 	/** Currently-subscribed `onExit` handlers. */
 	readonly exitHandlers: Set<() => void>;
 
 	/** All `writes` concatenated — the byte stream the terminal would see. */
 	output(): string;
-	/** Fire every subscribed `onExit` handler, as the runtime would at `unload`. */
+	/** Fire every subscribed `onExit` handler, as the runtime would at `exit`. */
 	triggerExit(): void;
 	/** Make the next (and every subsequent) `write` throw until unset. */
 	setWriteThrows(throws: boolean): void;
@@ -42,10 +44,10 @@ export interface FakeIo extends Io {
 export function makeFakeIo(init: FakeIoInit = {}): FakeIo {
 	let cols = init.columns ?? 80;
 	let isTty = init.isTerminal ?? true;
-	const env: Record<string, string | undefined> = { ...(init.env ?? {}) };
+	const env: Record<string, string | undefined> = { NO_COLOR: "1", ...init.env };
 	const nowFn = init.now ?? (() => 0);
 	const writes: string[] = [];
-	const unrefCalls: number[] = [];
+	const unrefCalls: unknown[] = [];
 	const exitHandlers = new Set<() => void>();
 	let writeThrows = false;
 
@@ -63,8 +65,8 @@ export function makeFakeIo(init: FakeIoInit = {}): FakeIo {
 		env(key: string): string | undefined {
 			return env[key];
 		},
-		unrefTimer(id: number): void {
-			unrefCalls.push(id);
+		unrefTimer(timer: unknown): void {
+			unrefCalls.push(timer);
 		},
 		now(): number {
 			return nowFn();

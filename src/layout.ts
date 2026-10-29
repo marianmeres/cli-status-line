@@ -29,7 +29,7 @@
  * `columns` so the runtime can re-read it per frame.
  */
 
-import { cyan, dim, yellow } from "@std/fmt/colors";
+import { cyan, dim, yellow } from "./colors.ts";
 import { displayWidth, truncateToWidth } from "./width.ts";
 
 /** Preferred minimum columns for `label + detail`; below this a tier is dropped. */
@@ -128,8 +128,7 @@ export function layout(input: LayoutInput, columns: number): LayoutParts {
 		["", ""],
 	];
 
-	for (let i = 0; i < tiers.length; i++) {
-		const [c, co] = tiers[i];
+	for (const [i, [c, co]] of tiers.entries()) {
 		const isLast = i === tiers.length - 1;
 		const hw = headWidth(spinner, c, co);
 		if (hw > budget) continue;
@@ -156,17 +155,22 @@ export function layout(input: LayoutInput, columns: number): LayoutParts {
  * the escape bytes never inflate the width budget.
  *
  * spinner → cyan, clock/counters → dim, label → yellow, detail → dim.
- * `NO_COLOR` and `setColorEnabled(false)` from `@std/fmt/colors` disable
- * colour automatically; the joined structure is unchanged.
+ * With `color === false` (the runtime passes `isColor(io)`, i.e. `NO_COLOR`
+ * unset or empty) the parts are joined plain; the structure is unchanged.
  */
-export function paint(parts: LayoutParts): string {
+export function paint(parts: LayoutParts, color: boolean): string {
 	const { spinner, clock, counters, label, detail } = parts;
+	const c = color ? { cyan, dim, yellow } : { cyan: plain, dim: plain, yellow: plain };
 	const pieces: string[] = [];
-	if (spinner) pieces.push(cyan(spinner));
-	if (clock && counters) pieces.push(dim(`${clock} · ${counters}`));
-	else if (clock) pieces.push(dim(clock));
-	else if (counters) pieces.push(dim(counters));
-	if (label) pieces.push(yellow(label));
-	if (detail) pieces.push(dim(detail));
+	if (spinner) pieces.push(c.cyan(spinner));
+	if (clock && counters) pieces.push(c.dim(`${clock} · ${counters}`));
+	else if (clock) pieces.push(c.dim(clock));
+	else if (counters) pieces.push(c.dim(counters));
+	if (label) pieces.push(c.yellow(label));
+	if (detail) pieces.push(c.dim(detail));
 	return pieces.join(" ");
+}
+
+function plain(s: string): string {
+	return s;
 }

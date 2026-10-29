@@ -1,7 +1,7 @@
 # API
 
 Everything below is exported from `@marianmeres/cli-status-line` (`src/mod.ts`).
-Nothing else is public — `layout()`, `paint()`, `sanitize()`, `denoIo` and friends
+Nothing else is public — `layout()`, `paint()`, `sanitize()`, `nodeIo` and friends
 are internal seams and may change without a major bump.
 
 ```typescript
@@ -124,13 +124,22 @@ line.log("warning:", err.message);
 #### `pause()` / `resume()`
 
 `pause()` erases the frame and suspends redraws until `resume()`. Both are
-idempotent, and `pause()` is deliberately **synchronous**: `confirm()` and
-`prompt()` block the event loop, so the timer cannot do the cleanup for you.
+idempotent, and `pause()` is deliberately **synchronous**: the prompt must land on
+a clean line, and while a `readline` question is waiting the event loop keeps
+running — without `pause()`, every tick would redraw over the prompt.
 
 ```typescript
+import { createInterface } from "node:readline/promises";
+
+const rl = createInterface({ input: process.stdin, output: process.stdout });
+let ok = false;
 line.pause();
-const ok = confirm("Overwrite dist/?");
-line.resume();
+try {
+	ok = /^y/i.test(await rl.question("Overwrite dist/? [y/N] "));
+} finally {
+	rl.close();
+	line.resume();
+}
 ```
 
 #### `stop(opts?)`
@@ -177,7 +186,7 @@ interface StatusLineOptions {
 | `enabled`    | `boolean`                | _auto-detected_  | Force the animated path on or off. Auto: `isTerminal() && TERM !== "dumb" && !CI`. Explicit values always win.      |
 | `fallback`   | `FallbackPolicy`         | `"notable"`      | What to emit when the animated path is off. See [`FallbackPolicy`](#fallbackpolicy).                                |
 | `hideCursor` | `boolean`                | `false`          | Hide the terminal cursor while animated. See [Cursor contract](#cursor-contract). Ignored on the non-animated path. |
-| `io`         | `Partial<Io>`            | _Deno defaults_  | Override part of the platform seam; the rest defers to the built-in Deno adapter. See [`Io`](#io).                  |
+| `io`         | `Partial<Io>`            | _Node defaults_  | Override part of the platform seam; the rest defers to the built-in `node:process` adapter. See [`Io`](#io).        |
 
 ---
 
@@ -292,7 +301,7 @@ interface Io {
 	columns(): number;
 	isTerminal(): boolean;
 	env(key: string): string | undefined;
-	unrefTimer(id: number): void;
+	unrefTimer(timer: unknown): void;
 	now(): number;
 	onExit(fn: () => void): () => void;
 }
@@ -300,22 +309,26 @@ interface Io {
 
 The platform seam — the one place the library touches the runtime. Pass a
 `Partial<Io>` as `options.io` to override individual members; the rest defer to
-the built-in Deno adapter. Primarily a testing seam, but also the supported way
-to render at a chosen width.
+the built-in `node:process` adapter. Primarily a testing seam, but also the
+supported way to render at a chosen width.
 
 **Every member must be total — no member may throw.** That contract is what lets
 `statusLine()` guarantee it never throws into the host.
 
-- `write(s)` — write the whole string; short writes are drained internally.
-- `columns()` — terminal width; the built-in adapter returns `80` when unknown.
+- `write(s)` — write the whole string. The built-in adapter uses
+  `process.stdout.write`, the same stream as `console.log`, so the line and your
+  own output never reorder.
+- `columns()` — terminal width; the built-in adapter reads `process.stdout.columns`
+  (then `process.stderr.columns`) and returns `80` when unknown.
   Re-read on every tick, which is how a resize is handled without a `SIGWINCH`
   listener.
 - `isTerminal()` — whether stdout is a tty.
 - `env(key)` — `undefined` when unset _or_ when the runtime denies access.
-- `unrefTimer(id)` — let the process exit with the timer still pending.
+- `unrefTimer(timer)` — let the process exit with the timer still pending. `timer`
+  is whatever `setInterval` returned; the built-in adapter calls its `unref()`.
 - `now()` — monotonic-enough milliseconds; only ever compared to itself.
-- `onExit(fn)` — run `fn` at normal process exit (including `Deno.exit()`);
-  returns an unsubscribe function.
+- `onExit(fn)` — run `fn` at normal process exit (including `process.exit()`);
+  returns an unsubscribe function. The built-in adapter uses `process.on("exit")`.
 
 ```typescript
 // Render the layout at a fixed width, off-tty.
@@ -396,11 +409,12 @@ Truncation iterates graphemes, so a surrogate pair or combining sequence is neve
 split, and colour is applied _after_ truncation so ANSI bytes never inflate the
 measured width.
 
-Width comes from `Deno.consoleSize()`, re-read every tick — **`COLUMNS` is not
+Width comes from `process.stdout.columns`, re-read every tick — **`COLUMNS` is not
 read**. To render at a chosen width, inject `columns()` through the [`Io`](#io)
 seam.
 
-Colour honours `NO_COLOR` and `setColorEnabled(false)` from `@std/fmt/colors`.
+Colour is off when `NO_COLOR` is set to a non-empty value (read once, at
+construction, through `io.env`).
 
 ### Animated vs non-animated
 
@@ -419,19 +433,19 @@ whatever the [`FallbackPolicy`](#fallbackpolicy) emits.
 
 With `hideCursor: true` the library emits `\x1b[?25l` at construction and
 restores with `\x1b[?25h` in `stop()`. It also registers `onExit(restore)` so a
-normal `unload` — including `Deno.exit()` — puts the cursor back.
+normal exit — including `process.exit()` — puts the cursor back.
 
 **Signals are the host's job.** The library never calls
-`Deno.addSignalListener`: a `SIGINT` listener disables Deno's default
+`process.on("SIGINT", …)`: a `SIGINT` listener disables the default
 terminate-on-Ctrl-C behaviour and would silently keep the host alive. A
-signal-killed process therefore bypasses `unload`, `onExit` does not fire, and
+signal-killed process therefore never emits `exit`, `onExit` does not fire, and
 the cursor stays hidden. If you want cursor restore on Ctrl-C, own the handler:
 
 ```typescript
 const line = statusLine({ hideCursor: true });
-Deno.addSignalListener("SIGINT", () => {
+process.on("SIGINT", () => {
 	line.stop({ text: "interrupted" });
-	Deno.exit(130);
+	process.exit(130);
 });
 ```
 

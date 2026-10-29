@@ -1,27 +1,33 @@
 /**
  * The one place in `src/` that touches the platform. Everything else — the renderer,
  * the lifecycle, the fallback policies — talks to the terminal through this seam so
- * that tests can inject a memory fake and drive the library byte-for-byte, and so
- * that adding a Node adapter later is a one-file change rather than a rewrite.
+ * that tests can inject a memory fake and drive the library byte-for-byte.
  *
  * The seam has three non-obvious rules baked in:
  *
- *   1. `write` never throws. Closed stdout, `EAGAIN` on a non-blocking pipe, a partial
- *      `writeSync` — all get swallowed or drained. A renderer must not kill a run.
- *   2. `env` never throws. `Deno.env.get` raises `NotCapable` under `--no-prompt`
- *      without `--allow-env`; the seam returns `undefined` in that case so
- *      `statusLine()` does not crash on construction under narrow permissions.
- *   3. Timers stay out. The seam owns `unrefTimer` but not `setInterval` — tests
- *      drive the real timers with `FakeTime` from `@std/testing/time`.
+ *   1. `write` never throws. It goes through `process.stdout.write` — the same stream
+ *      the host's own `console` output goes through — so the status line and host
+ *      output can never reorder, whatever stdout is connected to. A closed pipe (`EPIPE`) surfaces as an
+ *      `'error'` event on `process.stdout`, exactly as it would for the host's own
+ *      output; the seam deliberately registers no `'error'` listener, because one would
+ *      change how the host dies.
+ *   2. `env` never throws. A runtime that gates environment access may raise on read;
+ *      the seam returns `undefined` in that case so `statusLine()` does not crash on
+ *      construction under narrow permissions.
+ *   3. Timers stay out. The seam owns `unrefTimer` but not `setInterval` — tests drive
+ *      the global timers with `node:test` mock timers. The runtime must keep calling
+ *      the *global* `setInterval`: mock timers do not intercept `node:timers` imports.
  */
 
+import process from "node:process";
+
 /**
- * Platform seam. All members must be total: no method throws, ever. `denoIo` is
+ * Platform seam. All members must be total: no method throws, ever. `nodeIo` is
  * the only implementation in this package; `resolveIo` fills a partial override
- * (used by tests) from `denoIo`.
+ * (used by tests) from `nodeIo`.
  */
 export interface Io {
-	/** Write the whole string. Must not throw; short writes are drained internally. */
+	/** Write the whole string. Must not throw. */
 	write(s: string): void;
 	/** Terminal width in columns; a sane default (80) when unknown. */
 	columns(): number;
@@ -29,61 +35,61 @@ export interface Io {
 	isTerminal(): boolean;
 	/** `undefined` when unset OR when the runtime denies access — never throws. */
 	env(key: string): string | undefined;
-	/** Let the process exit even though this timer is pending. */
-	unrefTimer(id: number): void;
+	/** Let the process exit even though `timer` (what `setInterval` returned) is pending. */
+	unrefTimer(timer: unknown): void;
 	/** Monotonic-enough ms; only ever compared to itself. */
 	now(): number;
-	/** Run `fn` at normal process exit (incl. `Deno.exit()`); returns an unsubscribe. */
+	/** Run `fn` at normal process exit (incl. `process.exit()`); returns an unsubscribe. */
 	onExit(fn: () => void): () => void;
 }
 
-const encoder = new TextEncoder();
+function positive(n: unknown): number | undefined {
+	return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : undefined;
+}
 
 /**
- * Deno-backed `Io`. Kept internal so `mod.ts` never re-exports `Deno.*` reach into
- * the public surface; consumers who need to inject a fake do so via `Io`.
+ * Node-backed `Io` (`node:*` only, so it runs wherever `node:process` does). Kept
+ * internal so `mod.ts` never re-exports platform reach into the public surface;
+ * consumers who need to inject a fake do so via `Io`.
  */
-export const denoIo: Io = {
+export const nodeIo: Io = {
 	write(s: string): void {
 		try {
-			const bytes = encoder.encode(s);
-			let offset = 0;
-			while (offset < bytes.length) {
-				const n = Deno.stdout.writeSync(bytes.subarray(offset));
-				if (n <= 0) break;
-				offset += n;
-			}
+			process.stdout.write(s);
 		} catch {
-			// stdout closed / EAGAIN on non-blocking pipe / anything else — swallow.
+			// stdout destroyed / anything else thrown synchronously — swallow.
 		}
 	},
 	columns(): number {
 		try {
-			return Deno.consoleSize().columns;
+			// stdout first; stderr covers `enabled: true` with stdout piped into a file.
+			return (
+				positive(process.stdout.columns) ?? positive(process.stderr.columns) ?? 80
+			);
 		} catch {
 			return 80;
 		}
 	},
 	isTerminal(): boolean {
 		try {
-			return Deno.stdout.isTerminal();
+			return process.stdout.isTTY === true;
 		} catch {
 			return false;
 		}
 	},
 	env(key: string): string | undefined {
 		try {
-			return Deno.env.get(key);
+			return process.env[key];
 		} catch {
-			// `NotCapable` under `--no-prompt` without `--allow-env`.
+			// a permission-gated runtime refused the read
 			return undefined;
 		}
 	},
-	unrefTimer(id: number): void {
+	unrefTimer(timer: unknown): void {
 		try {
-			Deno.unrefTimer(id);
+			(timer as { unref?: () => void } | null | undefined)?.unref?.();
 		} catch {
-			// swallow — timer already cleared, or runtime lacks `unrefTimer`.
+			// swallow — timer already cleared, or not a Timeout.
 		}
 	},
 	now(): number {
@@ -97,15 +103,17 @@ export const denoIo: Io = {
 				// swallow — exit handlers must not throw.
 			}
 		};
-		globalThis.addEventListener("unload", handler);
-		return () => globalThis.removeEventListener("unload", handler);
+		process.on("exit", handler);
+		return () => {
+			process.off("exit", handler);
+		};
 	},
 };
 
 /**
- * Merge a partial `Io` over `denoIo`. Used by tests to override just the members
+ * Merge a partial `Io` over `nodeIo`. Used by tests to override just the members
  * they care about while the rest defer to the real platform behaviour.
  */
 export function resolveIo(partial?: Partial<Io>): Io {
-	return { ...denoIo, ...partial };
+	return { ...nodeIo, ...partial };
 }

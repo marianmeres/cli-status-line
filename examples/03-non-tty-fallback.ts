@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run
+#!/usr/bin/env -S node --conditions=@marianmeres/source
 /**
  * What happens when nobody is watching.
  *
@@ -14,8 +14,8 @@
  *
  * Run it both ways to see the two paths from the same code:
  *
- *     deno run examples/03-non-tty-fallback.ts         # animated on a tty
- *     deno run examples/03-non-tty-fallback.ts | cat   # one line per notable set()
+ *     pnpm -s example examples/03-non-tty-fallback.ts         # animated on a tty
+ *     pnpm -s example examples/03-non-tty-fallback.ts | cat   # one line per notable set()
  *
  * This script also forces the fallback path explicitly at the end so you can
  * see it without a pipe.

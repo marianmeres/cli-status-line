@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run
+#!/usr/bin/env -S node --conditions=@marianmeres/source
 /**
  * The smallest useful status line: a spinner, a clock, and a label that changes
  * as the work moves along.
@@ -8,17 +8,17 @@
  * the one line at the bottom answers "is it still alive?" without adding a
  * hundred lines of noise to it.
  *
- *     deno run examples/01-basic.ts
+ *     pnpm -s example examples/01-basic.ts
  */
 
 import { statusLine } from "@marianmeres/cli-status-line";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const steps = [
+const steps: [string, string][] = [
 	["resolving", "3 direct dependencies"],
-	["downloading", "@std/cli@1.0.32"],
-	["downloading", "@std/fmt@1.0.10"],
+	["downloading", "typescript@7.0.2"],
+	["downloading", "@biomejs/biome@2.6.3"],
 	["type-checking", "src/mod.ts"],
 	["bundling", "dist/app.js"],
 ];

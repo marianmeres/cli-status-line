@@ -44,10 +44,10 @@
  * ## Host contract
  *
  * The library never registers signal listeners — a `SIGINT` handler would
- * disable Deno's default terminate-on-Ctrl-C behaviour and silently keep the
+ * disable the default terminate-on-Ctrl-C behaviour and silently keep the
  * host alive. If `hideCursor: true` is used, the host is responsible for
  * calling `stop()` from its own `SIGINT` handler if it wants the cursor
- * restored on Ctrl-C; a normal `unload` (including `Deno.exit()`) is handled
+ * restored on Ctrl-C; a normal exit (including `process.exit()`) is handled
  * automatically via `io.onExit`.
  *
  * @module

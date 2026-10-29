@@ -1,0 +1,7 @@
+{
+  "name": "@marianmeres/cli-status-line",
+  "exports": "./src/mod.ts",
+  "publish": {
+    "include": ["src/**/*.ts", "README.md", "API.md", "AGENTS.md", "LICENSE"]
+  }
+}

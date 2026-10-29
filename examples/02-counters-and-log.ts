@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run
+#!/usr/bin/env -S node --conditions=@marianmeres/source
 /**
  * Counters and out-of-band output.
  *
@@ -12,7 +12,7 @@
  * lets the next tick redraw underneath it. Without it, a bare `console.log`
  * during an animation collides with the frame mid-write.
  *
- *     deno run examples/02-counters-and-log.ts
+ *     pnpm -s example examples/02-counters-and-log.ts
  */
 
 import { ASCII_FRAMES, statusLine } from "@marianmeres/cli-status-line";
@@ -42,7 +42,7 @@ for (const f of files) {
 	if (f === "width.ts") {
 		line.inc("warnings", 5);
 		// Real output belongs above the line, not in it.
-		line.log(`  ${f}: 5x no-control-regex (intentional, suppressed)`);
+		line.log(`  ${f}: 5x noControlCharactersInRegex (intentional, suppressed)`);
 	}
 
 	// Undeclared key — nothing happens, nothing throws.

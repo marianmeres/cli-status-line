@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run
+#!/usr/bin/env -S node --conditions=@marianmeres/source
 /**
  * Owning the non-animated format.
  *
@@ -16,7 +16,7 @@
  * `"silent"` is the third option, for when the non-tty case should produce
  * nothing at all.
  *
- *     deno run examples/04-custom-fallback.ts | cat
+ *     pnpm -s example examples/04-custom-fallback.ts | cat
  */
 
 import {

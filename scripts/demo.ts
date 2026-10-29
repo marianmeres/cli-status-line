@@ -1,14 +1,14 @@
-#!/usr/bin/env -S deno run
+#!/usr/bin/env node
 /**
  * Manual eyeball check for `statusLine()`. Runs a fake workload for ~6 s with
  * a mid-run `log()`, a `pause()` / `resume()`, and a final `stop({ text })`.
  *
  * Run it two ways to see both code paths:
  *
- *     deno run scripts/demo.ts           # animated on a tty
- *     deno run scripts/demo.ts | cat     # non-tty → notable lines only
+ *     node scripts/demo.ts           # animated on a tty
+ *     node scripts/demo.ts | cat     # non-tty → notable lines only
  *
- * Width comes from `Deno.consoleSize()`, so `COLUMNS=40` does nothing here —
+ * Width comes from `process.stdout.columns`, so `COLUMNS=40` does nothing here —
  * resize the window to watch the degradation ladder, or run
  * `examples/05-narrow-terminal.ts`, which renders at chosen widths by injecting
  * `columns()` through the `io` seam.
